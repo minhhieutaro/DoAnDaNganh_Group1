@@ -1,20 +1,82 @@
 export interface SensorData {
-    date: string;
-    humidity: number;
-    light: number;
-    temperature: number;
-    airQuality: number;
+  date: string;
+  humidity: number;
+  light: number;
+  temperature: number;
+  airQuality: number;
+}
+
+const generateRandomValue = (min: number, max: number) => {
+  return Number((min + Math.random() * (max - min)).toFixed(1));
+};
+
+const getDataPoints = (timeframe: string): number => {
+  switch (timeframe) {
+    case 'Day':
+      return 24; // 24 hours
+    case 'Week':
+      return 7 * 24; // 7 days * 24 hours
+    case 'Month':
+      return 30; // 30 days
+    case 'Year':
+      return 12; // 12 months
+    default:
+      return 30;
   }
-  
-  export const fetchSensorData = async (timeframe: string = 'Month'): Promise<SensorData[]> => {
-    return [
-      { date: '1 Oct', humidity: 35, light: 80, temperature: 23, airQuality: 50 },
-      { date: '3 Oct', humidity: 65, light: 75, temperature: 25, airQuality: 45 },
-      { date: '7 Oct', humidity: 45, light: 70, temperature: 22, airQuality: 55 },
-      { date: '10 Oct', humidity: 70, light: 60, temperature: 24, airQuality: 65 },
-      { date: '14 Oct', humidity: 55, light: 50, temperature: 26, airQuality: 80 },
-      { date: '20 Oct', humidity: 45, light: 40, temperature: 22, airQuality: 60 },
-      { date: '23 Oct', humidity: 30, light: 35, temperature: 20, airQuality: 70 },
-    ];
+};
+
+const formatDate = (date: Date, timeframe: string): string => {
+  switch (timeframe) {
+    case 'Day':
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    case 'Week':
+      return date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+    case 'Month':
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    case 'Year':
+      return date.toLocaleDateString([], { month: 'short', year: '2-digit' });
+    default:
+      return date.toLocaleDateString();
+  }
+};
+
+export const fetchSensorData = async (timeframe: string = 'Month'): Promise<SensorData[]> => {
+  const points = getDataPoints(timeframe);
+  const data: SensorData[] = [];
+  const now = new Date();
+
+  // Calculate the time interval based on timeframe
+  const getInterval = () => {
+    switch (timeframe) {
+      case 'Day':
+        return 60 * 60 * 1000; // 1 hour in milliseconds
+      case 'Week':
+        return 60 * 60 * 1000; // 1 hour in milliseconds
+      case 'Month':
+        return 24 * 60 * 60 * 1000; // 1 day in milliseconds
+      case 'Year':
+        return 30 * 24 * 60 * 60 * 1000; // ~1 month in milliseconds
+      default:
+        return 24 * 60 * 60 * 1000;
+    }
   };
-  
+
+  const interval = getInterval();
+
+  for (let i = points - 1; i >= 0; i--) {
+    const date = new Date(now.getTime() - (i * interval));
+
+    data.push({
+      date: formatDate(date, timeframe),
+      humidity: generateRandomValue(30, 70), // 30-70%
+      light: generateRandomValue(0, 100), // 0-100%
+      temperature: generateRandomValue(18, 30), // 18-30°C
+      airQuality: generateRandomValue(0, 100), // 0-100%
+    });
+  }
+
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  return data;
+};
