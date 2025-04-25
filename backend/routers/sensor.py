@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter
 from adafruitConnection import get_aio, get_mqtt, AIO_FEED_IDS
 
@@ -25,7 +26,7 @@ async def get_latest_temp():
 async def get_temp_history():
     try:
         aio = get_aio()
-        history = aio.data(AIO_FEED_IDS[5], limit=1000) 
+        history = aio.data(AIO_FEED_IDS[5], max_results=1000) 
         return [
             {"value": entry.value, "timestamp": entry.created_at} for entry in history
         ]
@@ -50,7 +51,7 @@ async def get_latest_light():
 async def get_light_history():
     try:
         aio = get_aio()
-        history = aio.data(AIO_FEED_IDS[3], limit = 1000)  # Get last 5 entries
+        history = aio.data(AIO_FEED_IDS[3], max_results=1000)  # Get last 5 entries
         return [
             {"value": entry.value, "timestamp": entry.created_at} for entry in history
         ]
@@ -75,7 +76,7 @@ async def get_latest_humid():
 async def get_humid_history():
     try:
         aio = get_aio()
-        history = aio.data(AIO_FEED_IDS[2], limit = 1000)  # Get last 5 entries
+        history = aio.data(AIO_FEED_IDS[2], max_results=1000)  # Get last 5 entries
         return [
             {"value": entry.value, "timestamp": entry.created_at} for entry in history
         ]

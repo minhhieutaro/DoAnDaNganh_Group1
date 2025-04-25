@@ -41,7 +41,6 @@ interface LightStats {
 }
 
 // Demo data generation functions
-// TODO: Replace with actual API calls
 const generateRandomLight = (min: number, max: number) => {
   return +(min + Math.random() * (max - min)).toFixed(1);
 };
@@ -105,6 +104,100 @@ const LightMonitor = () => {
     median: 50,
     stdDev: 2.5
   });
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Function to fetch latest light data from API
+  const fetchLatestLightData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Fetch latest light data from the API
+      const response = await fetch('http://localhost:8000/sensor/light/latest');
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Update current light value - ensure it's a number
+      const lightValue = parseFloat(data.value);
+      setCurrentLight(lightValue);
+      
+      // Update stats with the new value
+      setStats(prevStats => ({
+        ...prevStats,
+        current: lightValue
+      }));
+      
+    } catch (err) {
+      console.error('Error fetching latest light data:', err);
+      setError('Failed to fetch latest light data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Function to fetch historical light data from API
+  const fetchHistoricalLightData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Fetch historical light data from the API
+      const response = await fetch('http://localhost:8000/sensor/light/history1000');
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Transform API data to match our LightData interface
+      const transformedData: LightData[] = data.map((item: any) => ({
+        value: parseFloat(item.value), // Convert string to number
+        timestamp: item.timestamp
+      }));
+      
+      // Update historical data
+      setHistoricalData(transformedData);
+      
+      // Calculate and update stats
+      const newStats = calculateStats(transformedData);
+      setStats(newStats);
+      
+    } catch (err) {
+      console.error('Error fetching historical light data:', err);
+      setError('Failed to fetch historical light data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Function to filter data based on active tab
+  const filterDataByTimeRange = (data: LightData[], tab: 'Day' | 'Week' | 'Month' | 'Year'): LightData[] => {
+    const now = new Date();
+    let cutoffDate = new Date();
+    
+    switch (tab) {
+      case 'Day':
+        cutoffDate.setDate(now.getDate() - 1);
+        break;
+      case 'Week':
+        cutoffDate.setDate(now.getDate() - 7);
+        break;
+      case 'Month':
+        cutoffDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'Year':
+        cutoffDate.setFullYear(now.getFullYear() - 1);
+        break;
+    }
+    
+    return data.filter(item => new Date(item.timestamp) >= cutoffDate);
+  };
 
   useEffect(() => {
     // Initialize with some demo data
@@ -114,20 +207,14 @@ const LightMonitor = () => {
     setStats(initialStats);
     setCurrentLight(initialStats.current);
 
+    // Fetch real data from API
+    fetchLatestLightData();
+    fetchHistoricalLightData();
+
     // Update data every 5 seconds
     const interval = setInterval(() => {
-      const newLight = generateRandomLight(40, 60);
-      setCurrentLight(newLight);
-      setStats(prev => ({
-        ...prev,
-        current: newLight
-      }));
+      fetchLatestLightData();
     }, 5000);
-
-    // TODO: Add API call to fetch current light intensity
-    // TODO: Add API call to fetch historical data (limit 1000)
-    // TODO: Calculate statistics from historical data
-    // TODO: Implement time range filtering based on activeTab (Day/Week/Month/Year)
 
     return () => clearInterval(interval);
   }, [activeTab]);
@@ -140,12 +227,15 @@ const LightMonitor = () => {
     return { text: 'Optimal Light', color: 'text-green-600' };
   };
 
+  // Filter data based on active tab
+  const filteredData = filterDataByTimeRange(historicalData, activeTab);
+
   const chartData = {
-    labels: historicalData.map(d => new Date(d.timestamp).toLocaleTimeString()),
+    labels: filteredData.map(d => new Date(d.timestamp).toLocaleTimeString()),
     datasets: [
       {
         label: 'Light Intensity (%)',
-        data: historicalData.map(d => d.value),
+        data: filteredData.map(d => d.value),
         borderColor: '#7a40f2',
         tension: 0.1,
         pointRadius: 4,
@@ -173,11 +263,12 @@ const LightMonitor = () => {
               <LightIntensityIcon />
             </div>
             <div className="text-4xl font-bold mb-2 text-[#242424]">
-              {currentLight}%
+              {isLoading ? 'Loading...' : `${currentLight}%`}
             </div>
             <div className={`font-medium ${status.color}`}>
               {status.text}
             </div>
+            {error && <div className="text-red-500 mt-2">{error}</div>}
           </div>
 
           {/* Statistics Card */}
@@ -194,7 +285,9 @@ const LightMonitor = () => {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Average:</span>
-                <span className="font-medium text-[#242424]">{stats.avg.toFixed(1)}%</span>
+                <span className="font-medium text-[#242424]">
+                  {isNaN(stats.avg) ? 'N/A' : stats.avg.toFixed(1)}%
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Median:</span>
@@ -202,7 +295,9 @@ const LightMonitor = () => {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Standard Deviation:</span>
-                <span className="font-medium text-[#242424]">{stats.stdDev.toFixed(2)}%</span>
+                <span className="font-medium text-[#242424]">
+                  {isNaN(stats.stdDev) ? 'N/A' : stats.stdDev.toFixed(2)}%
+                </span>
               </div>
             </div>
           </div>
@@ -230,35 +325,45 @@ const LightMonitor = () => {
               </div>
             </div>
             <div className="h-80">
-              <Line
-                data={chartData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  animation: {
-                    duration: 300
-                  },
-                  plugins: {
-                    legend: {
-                      display: false
-                    }
-                  },
-                  scales: {
-                    y: {
-                      beginAtZero: true,
-                      max: 100,
-                      grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
-                      }
+              {isLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-gray-500">Loading chart data...</div>
+                </div>
+              ) : error ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-red-500">{error}</div>
+                </div>
+              ) : (
+                <Line
+                  data={chartData}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                      duration: 300
                     },
-                    x: {
-                      grid: {
+                    plugins: {
+                      legend: {
                         display: false
                       }
+                    },
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: {
+                          color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                      },
+                      x: {
+                        grid: {
+                          display: false
+                        }
+                      }
                     }
-                  }
-                }}
-              />
+                  }}
+                />
+              )}
             </div>
           </div>
         </div>
