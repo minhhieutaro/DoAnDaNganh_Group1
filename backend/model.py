@@ -16,3 +16,17 @@ class login_info(BaseModel):
 # Pydantic model to validate input
 class FanSpeed(BaseModel):
     speed: int = Field(..., ge=0, le=100, description="Fan speed from 0 (off) to 100 (max)")
+
+class ColorCode(str, Enum):
+    RED = "#FF0000"
+    BLACK = "#2E2E2E"
+    WHITE = "#F2F2F2"
+    PURPLE = "#7E3F98"
+    MAGENTA = "#FF00FF"
+    CYAN = "#00CFFF"
+    GREEN = "#00B050"
+    YELLOW = "#FFFF00"
+    ORANGE = "#F79646"
+
+class Color(BaseModel):
+     code : ColorCode

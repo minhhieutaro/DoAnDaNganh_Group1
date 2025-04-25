@@ -12,6 +12,9 @@ export const UsersIcon: React.FC = () => <Icon icon="mdi:account-group" />;
 export const ChartIcon: React.FC = () => <Icon icon="mdi:chart-line" />;
 export const LogoutIcon: React.FC = () => <Icon icon="mdi:logout" />;
 
+// Icon for fire detection
+export const CameraIcon: React.FC = () => <Icon icon="mdi:camera" />;
+
 // Icon cho header
 export const SettingsIcon: React.FC = () => <Icon icon="mdi:cog" />;
 export const NotificationIcon: React.FC = () => <Icon icon="mdi:bell" />;

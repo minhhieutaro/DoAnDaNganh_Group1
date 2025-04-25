@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { HomeIcon, GridIcon, LampIcon, ShieldIcon, LocationIcon, UsersIcon, ChartIcon, LogoutIcon, FanIcon, TemperatureIcon } from '../ui/Icons';
+import { HomeIcon, GridIcon, LampIcon, ShieldIcon, LocationIcon, UsersIcon, ChartIcon, LogoutIcon, FanIcon, TemperatureIcon, CameraIcon } from '../ui/Icons';
 
 const Sidebar: React.FC = () => {
   const pathname = usePathname();
@@ -34,6 +34,9 @@ const Sidebar: React.FC = () => {
         </Link>
         <Link href="/temperature" className={getLinkClass('/temperature')}>
           <TemperatureIcon />
+        </Link>
+        <Link href="/fire-detection" className={getLinkClass('/fire-detection')}>
+          <CameraIcon />
         </Link>
         <button className="p-2 hover:bg-purple-500 rounded-lg transition-colors duration-200">
           <LampIcon />

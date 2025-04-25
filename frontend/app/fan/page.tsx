@@ -8,19 +8,65 @@ const FanControl = () => {
     const [isOn, setIsOn] = useState(false);
     const [speed, setSpeed] = useState(50);
 
-    const handleSpeedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleSpeedChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const newSpeed = parseInt(e.target.value);
         setSpeed(newSpeed);
-        if (!isOn) setIsOn(true);
-        // TODO: Add API call to update fan speed
+        if (!isOn) {
+            try {
+                const response = await fetch('http://localhost:8000/fan/fan/on', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ speed: newSpeed }),
+                });
+                if (response.ok) {
+                    setIsOn(true);
+                }
+            } catch (error) {
+                console.error('Error turning on fan:', error);
+            }
+        } else {
+            try {
+                const response = await fetch('http://localhost:8000/fan/fan/on', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ speed: newSpeed }),
+                });
+                if (!response.ok) {
+                    console.error('Error updating fan speed');
+                }
+            } catch (error) {
+                console.error('Error updating fan speed:', error);
+            }
+        }
     };
 
-    const handleToggle = () => {
-        setIsOn(!isOn);
-        if (!isOn) {
-            // TODO: Add API call to turn on fan with current speed
-        } else {
-            // TODO: Add API call to turn off fan
+    const handleToggle = async () => {
+        try {
+            if (isOn) {
+                const response = await fetch('http://localhost:8000/fan/fan/off', {
+                    method: 'POST',
+                });
+                if (response.ok) {
+                    setIsOn(false);
+                }
+            } else {
+                const response = await fetch('http://localhost:8000/fan/fan/on', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ speed }),
+                });
+                if (response.ok) {
+                    setIsOn(true);
+                }
+            }
+        } catch (error) {
+            console.error('Error toggling fan:', error);
         }
     };
 

@@ -41,42 +41,46 @@ const formatDate = (date: Date, timeframe: string): string => {
 };
 
 export const fetchSensorData = async (timeframe: string = 'Month'): Promise<SensorData[]> => {
-  const points = getDataPoints(timeframe);
-  const data: SensorData[] = [];
-  const now = new Date();
+  try {
+    // Fetch historical data for all sensors
+    const [tempRes, lightRes, humidRes, airQualityRes] = await Promise.all([
+      fetch('http://localhost:8000/sensor/temp/history1000'),
+      fetch('http://localhost:8000/sensor/light/history1000'),
+      fetch('http://localhost:8000/sensor/humid/history1000'),
+      fetch('http://localhost:8000/sensor/air-quality')
+    ]);
 
-  // Calculate the time interval based on timeframe
-  const getInterval = () => {
-    switch (timeframe) {
-      case 'Day':
-        return 60 * 60 * 1000; // 1 hour in milliseconds
-      case 'Week':
-        return 60 * 60 * 1000; // 1 hour in milliseconds
-      case 'Month':
-        return 24 * 60 * 60 * 1000; // 1 day in milliseconds
-      case 'Year':
-        return 30 * 24 * 60 * 60 * 1000; // ~1 month in milliseconds
-      default:
-        return 24 * 60 * 60 * 1000;
+    const [tempData, lightData, humidData] = await Promise.all([
+      tempRes.json(),
+      lightRes.json(),
+      humidRes.json()
+    ]);
+
+    const airQualityData = await airQualityRes.json();
+    const airQualityValue = airQualityData.value || 75;
+
+    if (!Array.isArray(tempData) || !Array.isArray(lightData) || !Array.isArray(humidData)) {
+      throw new Error('Invalid data format received from the server');
     }
-  };
 
-  const interval = getInterval();
-
-  for (let i = points - 1; i >= 0; i--) {
-    const date = new Date(now.getTime() - (i * interval));
-
-    data.push({
-      date: formatDate(date, timeframe),
-      humidity: generateRandomValue(30, 70), // 30-70%
-      light: generateRandomValue(0, 100), // 0-100%
-      temperature: generateRandomValue(18, 30), // 18-30°C
-      airQuality: generateRandomValue(0, 100), // 0-100%
+    // Combine the data from all sensors
+    const combinedData = tempData.map((temp: any, index: number) => {
+      const date = new Date(temp.timestamp);
+      return {
+        date: formatDate(date, timeframe),
+        temperature: parseFloat(temp.value) || 0,
+        light: parseFloat(lightData[index]?.value) || 0,
+        humidity: parseFloat(humidData[index]?.value) || 0,
+        airQuality: airQualityValue
+      };
     });
+
+    // Sort by timestamp to ensure correct order
+    return combinedData.sort((a, b) =>
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+  } catch (error) {
+    console.error('Error fetching sensor data:', error);
+    return [];
   }
-
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-
-  return data;
 };

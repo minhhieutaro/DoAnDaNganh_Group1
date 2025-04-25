@@ -1,5 +1,6 @@
 import React from 'react';
 import { SearchIcon, SettingsIcon, NotificationIcon } from '../ui/Icons';
+import { Avatar } from '../ui/Avatar';
 
 const Header: React.FC = () => {
   return (
@@ -22,9 +23,7 @@ const Header: React.FC = () => {
           <NotificationIcon />
         </button>
         <div className="flex items-center space-x-2">
-          <div className="w-10 h-10 rounded-full bg-purple-500 overflow-hidden">
-            <img src="/api/placeholder/40/40" alt="Profile" className="w-full h-full object-cover" />
-          </div>
+          <Avatar src="/img/pdz.jpg" alt="Phu" size={40} />
           <div className="font-medium">Phu</div>
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />

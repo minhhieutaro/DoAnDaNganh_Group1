@@ -12,23 +12,23 @@ async def turn_off_fan(request : Request, data: login_info ):
     try:
         username = data.username
         password = data.password
-        cursor = request.app.state.db.cursor()
-        query = "SELECT * FROM users WHERE username = %s AND pass = %s"
-        cursor.execute(query, (username, password))
-        result = cursor.fetchone()
-        cursor.close()
+        supabase = request.app.state.db
+        result = supabase.table("users").select("*")\
+                .eq("username", username)\
+                .eq("pass", password)\
+                .execute()
 
-        if result:
-            return {"message": "Login successful", "user": result}
+        if result.data != []:
+            return {"message": "Login successful", "user": result.data[0]}
         else:
             return {"message": "Invalid username or password"}
     except Exception as e:
         return {"error": str(e)}
 
-@router.get("/items/")
-def read_items(request: Request):
-    cursor = request.app.state.db.cursor()
-    cursor.execute("SELECT * FROM items")
-    results = cursor.fetchall()
-    cursor.close()
-    return results
+# @router.get("/items/")
+# def read_items(request: Request):
+#     cursor = request.app.state.db.cursor()
+#     cursor.execute("SELECT * FROM items")
+#     results = cursor.fetchall()
+#     cursor.close()
+#     return results

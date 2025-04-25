@@ -64,7 +64,17 @@ const calculateStats = (data: TemperatureData[]): TemperatureStats => {
         };
     }
 
-    const values = data.map(d => d.value);
+    // Parse values as numbers and filter out any invalid values
+    const values = data.map(d => parseFloat(d.value.toString())).filter(v => !isNaN(v));
+    if (values.length === 0) return {
+        current: 0,
+        min: 0,
+        max: 0,
+        avg: 0,
+        median: 0,
+        stdDev: 0
+    };
+
     const sortedValues = [...values].sort((a, b) => a - b);
 
     const min = sortedValues[0];
@@ -95,6 +105,7 @@ const TemperatureMonitor = () => {
     const [currentTemp, setCurrentTemp] = useState<number>(25);
     const [historicalData, setHistoricalData] = useState<TemperatureData[]>([]);
     const [activeTab, setActiveTab] = useState<'Day' | 'Week' | 'Month' | 'Year'>('Month');
+    const [isBackendConnected, setIsBackendConnected] = useState(false);
     const [stats, setStats] = useState<TemperatureStats>({
         current: 25,
         min: 23,
@@ -104,43 +115,132 @@ const TemperatureMonitor = () => {
         stdDev: 0.5
     });
 
+    // Check if backend is running
+    const checkBackendConnection = async () => {
+        try {
+            const response = await fetch('http://localhost:8000/sensor/');  // Added trailing slash to avoid redirect
+            if (response.ok) {
+                setIsBackendConnected(true);
+                return true;
+            }
+            setIsBackendConnected(false);
+            return false;
+        } catch (error) {
+            console.error('Backend connection error:', error);
+            setIsBackendConnected(false);
+            return false;
+        }
+    };
+
+    const fetchLatestTemperature = async () => {
+        if (!isBackendConnected) return;
+
+        try {
+            const response = await fetch('http://localhost:8000/sensor/temp/latest');
+            if (!response.ok) {
+                throw new Error('Failed to fetch latest temperature');
+            }
+            const data = await response.json();
+            if (data.value) {
+                const tempValue = parseFloat(data.value);
+                if (!isNaN(tempValue)) {
+                    setCurrentTemp(tempValue);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching latest temperature:', error);
+            setIsBackendConnected(false);
+        }
+    };
+
+    const fetchHistoricalData = async () => {
+        if (!isBackendConnected) return;
+
+        try {
+            const response = await fetch('http://localhost:8000/sensor/temp/history1000');
+            if (!response.ok) {
+                throw new Error('Failed to fetch historical data');
+            }
+            const data = await response.json();
+            if (Array.isArray(data)) {
+                // Parse the data and ensure all values are valid numbers
+                const validData = data.map(item => ({
+                    value: parseFloat(item.value),
+                    timestamp: item.timestamp
+                })).filter(item => !isNaN(item.value));
+
+                // Sort data by timestamp to ensure correct order
+                const sortedData = validData.sort((a, b) =>
+                    new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+                );
+
+                setHistoricalData(sortedData);
+                const newStats = calculateStats(sortedData);
+                setStats(newStats);
+            }
+        } catch (error) {
+            console.error('Error fetching historical temperature data:', error);
+            setIsBackendConnected(false);
+        }
+    };
+
     useEffect(() => {
-        // Initialize with some demo data
-        const initialData = generateHistoricalData(50, 25);
-        const initialStats = calculateStats(initialData);
-        setHistoricalData(initialData);
-        setStats(initialStats);
-        setCurrentTemp(initialStats.current);
+        let isComponentMounted = true;
 
-        // Update data every 5 seconds
-        const interval = setInterval(() => {
-            const newTemp = generateRandomTemperature(23, 27);
-            const newDataPoint = {
-                value: newTemp,
-                timestamp: new Date().toISOString()
-            };
+        const initializeData = async () => {
+            if (!isComponentMounted) return;
 
-            // Update all states atomically
-            setHistoricalData(prevData => {
-                const updatedData = [...prevData.slice(-49), newDataPoint];
-                const newStats = calculateStats(updatedData);
+            const isConnected = await checkBackendConnection();
+            if (isConnected && isComponentMounted) {
+                await fetchHistoricalData();
+                await fetchLatestTemperature();
+            }
+        };
 
-                // Update stats and current temp in the next microtask
-                Promise.resolve().then(() => {
-                    setStats(newStats);
-                    setCurrentTemp(newTemp);
-                });
+        initializeData();
 
-                return updatedData;
-            });
+        // Update data every 5 seconds, but only check connection if we're not already connected
+        const interval = setInterval(async () => {
+            if (!isComponentMounted) return;
+
+            if (!isBackendConnected) {
+                const isConnected = await checkBackendConnection();
+                if (!isConnected || !isComponentMounted) return;
+            }
+
+            await fetchLatestTemperature();
+            await fetchHistoricalData();
         }, 5000);
 
-        // TODO: Add API call to fetch current temperature
-        // TODO: Add API call to fetch historical data (limit 1000)
-        // TODO: Calculate statistics from historical data
+        return () => {
+            isComponentMounted = false;
+            clearInterval(interval);
+        };
+    }, [activeTab, isBackendConnected]); // Added isBackendConnected to dependencies
 
-        return () => clearInterval(interval);
-    }, [activeTab]);
+    // Add a message when backend is not connected
+    if (!isBackendConnected) {
+        return (
+            <div className="flex h-screen bg-gray-100">
+                <Sidebar />
+                <div className="flex-1 flex flex-col p-6 overflow-hidden">
+                    <Header />
+                    <div className="flex items-center justify-center h-full">
+                        <div className="text-center">
+                            <h2 className="text-xl font-semibold text-red-600 mb-2">Cannot Connect to Backend Server</h2>
+                            <p className="text-gray-600">Please make sure the backend server is running at http://localhost:8000</p>
+                            <button
+                                onClick={checkBackendConnection}
+                                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                            >
+                                Retry Connection
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     const getTemperatureStatus = (temp: number) => {
         if (temp >= 35) return { text: 'Danger - Too Hot!', color: 'text-red-600' };
@@ -157,12 +257,44 @@ const TemperatureMonitor = () => {
                 data: historicalData.map(d => d.value),
                 borderColor: '#C084FC',
                 tension: 0.1,
-                pointRadius: 4,
-                pointHoverRadius: 6,
-                borderWidth: 2,
+                pointRadius: 1, // Even smaller points for better performance with 1000 points
+                pointHoverRadius: 3,
+                borderWidth: 1.5,
                 fill: false
             }
         ]
+    };
+
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: {
+            duration: 300
+        },
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            x: {
+                grid: {
+                    display: false
+                },
+                ticks: {
+                    maxRotation: 0,
+                    autoSkip: true,
+                    maxTicksLimit: 10
+                }
+            },
+            y: {
+                grid: {
+                    color: '#f3f4f6'
+                },
+                min: Math.floor(stats.min - 1),
+                max: Math.ceil(stats.max + 1)
+            }
+        }
     };
 
     const status = getTemperatureStatus(currentTemp);
@@ -236,37 +368,7 @@ const TemperatureMonitor = () => {
                         <div className="h-[400px]">
                             <Line
                                 data={chartData}
-                                options={{
-                                    responsive: true,
-                                    maintainAspectRatio: false,
-                                    animation: {
-                                        duration: 300
-                                    },
-                                    plugins: {
-                                        legend: {
-                                            display: false
-                                        }
-                                    },
-                                    scales: {
-                                        x: {
-                                            grid: {
-                                                display: false
-                                            },
-                                            ticks: {
-                                                maxRotation: 0,
-                                                autoSkip: true,
-                                                maxTicksLimit: 10
-                                            }
-                                        },
-                                        y: {
-                                            grid: {
-                                                color: '#f3f4f6'
-                                            },
-                                            min: Math.floor(stats.min - 1),
-                                            max: Math.ceil(stats.max + 1)
-                                        }
-                                    }
-                                }}
+                                options={chartOptions}
                             />
                         </div>
                     </div>

@@ -97,20 +97,40 @@ const Dashboard = () => {
         airQuality: getAirQualityStatus(75)
     });
 
-    useEffect(() => {
-        // Initialize with demo data
-        const initialData = generateHistoricalData(50);
-        setHistoricalData(initialData);
-        updateCurrentValues(initialData[initialData.length - 1]);
+    const fetchAirQualityData = async () => {
+        try {
+            const response = await fetch('http://localhost:8000/sensor/air-quality');
+            const data = await response.json();
+            return data.value;
+        } catch (error) {
+            console.error('Error fetching air quality data:', error);
+            return 75; // Default value on error
+        }
+    };
 
-        // Update data every 5 seconds
-        const interval = setInterval(() => {
+    const fetchLatestData = async () => {
+        try {
+            const [tempRes, lightRes, humidRes] = await Promise.all([
+                fetch('http://localhost:8000/sensor/temp/latest'),
+                fetch('http://localhost:8000/sensor/light/latest'),
+                fetch('http://localhost:8000/sensor/humid/latest')
+            ]);
+
+            const [tempData, lightData, humidData] = await Promise.all([
+                tempRes.json(),
+                lightRes.json(),
+                humidRes.json()
+            ]);
+
+            // Fetch air quality data separately to ensure we get fresh data each time
+            const airQuality = await fetchAirQualityData();
+
             const newData = {
                 timestamp: new Date().toISOString(),
-                humidity: generateRandomValue(30, 70),
-                temperature: generateRandomValue(23, 27),
-                lightIntensity: generateRandomValue(40, 90),
-                airQuality: generateRandomValue(60, 95)
+                humidity: humidData.value,
+                temperature: tempData.value,
+                lightIntensity: lightData.value,
+                airQuality: airQuality
             };
 
             setHistoricalData(prev => {
@@ -118,7 +138,57 @@ const Dashboard = () => {
                 updateCurrentValues(newData);
                 return updated;
             });
-        }, 5000);
+        } catch (error) {
+            console.error('Error fetching latest data:', error);
+        }
+    };
+
+    const fetchHistoricalData = async () => {
+        try {
+            const [tempRes, lightRes, humidRes] = await Promise.all([
+                fetch('http://localhost:8000/sensor/temp/history1000'),
+                fetch('http://localhost:8000/sensor/light/history1000'),
+                fetch('http://localhost:8000/sensor/humid/history1000')
+            ]);
+
+            const [tempData, lightData, humidData] = await Promise.all([
+                tempRes.json(),
+                lightRes.json(),
+                humidRes.json()
+            ]);
+
+            // Fetch air quality data separately to ensure we get fresh data each time
+            const airQuality = await fetchAirQualityData();
+
+            // Ensure we have arrays of data
+            const tempArray = Array.isArray(tempData) ? tempData : [tempData];
+            const lightArray = Array.isArray(lightData) ? lightData : [lightData];
+            const humidArray = Array.isArray(humidData) ? humidData : [humidData];
+
+            // Combine the data points
+            const combinedData = tempArray.map((temp: any, index: number) => ({
+                timestamp: temp.timestamp || new Date().toISOString(),
+                temperature: temp.value || 0,
+                lightIntensity: lightArray[index]?.value || 0,
+                humidity: humidArray[index]?.value || 0,
+                airQuality: airQuality // Using the same air quality value for all historical points
+            }));
+
+            setHistoricalData(combinedData);
+            if (combinedData.length > 0) {
+                updateCurrentValues(combinedData[combinedData.length - 1]);
+            }
+        } catch (error) {
+            console.error('Error fetching historical data:', error);
+        }
+    };
+
+    useEffect(() => {
+        // Initial data fetch
+        fetchHistoricalData();
+
+        // Update data every 5 seconds
+        const interval = setInterval(fetchLatestData, 5000);
 
         return () => clearInterval(interval);
     }, [activeTab]);
