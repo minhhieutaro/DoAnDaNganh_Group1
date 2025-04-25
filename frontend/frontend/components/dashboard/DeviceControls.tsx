@@ -14,6 +14,7 @@ const DeviceControls: React.FC<DeviceControlsProps> = ({ devices, onToggleDevice
   
   const handleColorChange = (color: string) => {
     setLedColor(color);
+    // Thêm logic xử lý màu nếu cần thiết
   };
   return (
     <div className="grid grid-cols-2 gap-4">

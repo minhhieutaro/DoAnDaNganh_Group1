@@ -1,40 +1,19 @@
 import React from 'react';
-<<<<<<< Updated upstream
 import { HomeIcon, GridIcon, LampIcon, ShieldIcon, LocationIcon, UsersIcon, ChartIcon, LogoutIcon } from '../ui/Icons';
-=======
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { HomeIcon, LampIcon, ShieldIcon, LocationIcon, UsersIcon, ChartIcon, LogoutIcon, FanIcon, SensorIcon, TemperatureIcon } from '../ui/Icons';
->>>>>>> Stashed changes
 
 const Sidebar: React.FC = () => {
   return (
     <div className="w-20 bg-[#7a40f2] flex flex-col items-center py-6 text-white">
       <div className="text-white font-semibold mb-12">
         <HomeIcon />
-<<<<<<< Updated upstream
       </div>
       <div className="flex flex-col space-y-8 flex-grow">
         <button className="p-2 rounded-lg bg-white text-[#7a40f2]">
           <GridIcon />
         </button>
         <button className="p-2 hover:bg-purple-500 rounded-lg transition-colors duration-200">
-=======
-      </Link>
-      <div className="flex flex-col space-y-8 flex-grow mt-12">
-        <Link href="/sensors" className={getLinkClass('/sensors')}>
-          <SensorIcon />
-        </Link>
-        <Link href="/device" className={getLinkClass('/device')}>
-          <FanIcon />
-        </Link>
-        <Link href="/temperature" className={getLinkClass('/temperature')}>
-          <TemperatureIcon />
-        </Link>
-        <Link href="/auth/login" className={getLinkClass('/auth/login')}>
->>>>>>> Stashed changes
           <LampIcon />
-        </Link>
+        </button>
         <button className="p-2 hover:bg-purple-500 rounded-lg transition-colors duration-200">
           <ShieldIcon />
         </button>

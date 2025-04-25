@@ -18,22 +18,14 @@ export default function Home() {
   const { weather, loading: weatherLoading } = useWeather();
   
   const [fanSpeed, setFanSpeed] = useState(50);
-<<<<<<< Updated upstream
   
   // Thêm hàm xử lý thay đổi tốc độ quạt
-=======
-
->>>>>>> Stashed changes
   const handleFanSpeedChange = (speed: number) => {
     setFanSpeed(speed);
     console.log(`Fan speed changed to: ${speed}`);
   };
-<<<<<<< Updated upstream
   
   // Hiển thị loader khi đang fetch dữ liệu
-=======
-
->>>>>>> Stashed changes
   if (dataLoading || devicesLoading || weatherLoading) {
     return <div className="flex h-screen items-center justify-center">Loading...</div>;
   }
