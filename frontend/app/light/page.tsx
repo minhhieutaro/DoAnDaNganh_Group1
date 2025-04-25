@@ -122,8 +122,8 @@ const LightMonitor = () => {
       
       const data = await response.json();
       
-      // Update current light value - ensure it's a number
-      const lightValue = parseFloat(data.value);
+      // Update current light value - ensure it's a number and rounded to 1 decimal
+      const lightValue = parseFloat(parseFloat(data.value).toFixed(1));
       setCurrentLight(lightValue);
       
       // Update stats with the new value
@@ -157,7 +157,7 @@ const LightMonitor = () => {
       
       // Transform API data to match our LightData interface
       const transformedData: LightData[] = data.map((item: any) => ({
-        value: parseFloat(item.value), // Convert string to number
+        value: parseFloat(parseFloat(item.value).toFixed(1)), // Convert string to number and round to 1 decimal
         timestamp: item.timestamp
       }));
       
@@ -217,7 +217,15 @@ const LightMonitor = () => {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [activeTab]);
+  }, []); // Remove activeTab dependency to prevent refetching on tab change
+
+  // Add a new useEffect to update filtered data when activeTab changes
+  useEffect(() => {
+    if (historicalData.length > 0) {
+      const filteredData = filterDataByTimeRange(historicalData, activeTab);
+      // We don't need to set state here as we'll use the filtered data directly in the chart
+    }
+  }, [activeTab, historicalData]);
 
   const getLightStatus = (light: number) => {
     if (light >= 80) return { text: 'Very Bright', color: 'text-yellow-600' };
@@ -230,8 +238,26 @@ const LightMonitor = () => {
   // Filter data based on active tab
   const filteredData = filterDataByTimeRange(historicalData, activeTab);
 
+  // Format date labels based on the active tab
+  const formatDateLabel = (timestamp: string) => {
+    const date = new Date(timestamp);
+    
+    switch (activeTab) {
+      case 'Day':
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      case 'Week':
+        return date.toLocaleDateString([], { weekday: 'short', hour: '2-digit' });
+      case 'Month':
+        return date.toLocaleDateString([], { day: 'numeric', month: 'short' });
+      case 'Year':
+        return date.toLocaleDateString([], { month: 'short' });
+      default:
+        return date.toLocaleTimeString();
+    }
+  };
+
   const chartData = {
-    labels: filteredData.map(d => new Date(d.timestamp).toLocaleTimeString()),
+    labels: filteredData.map(d => formatDateLabel(d.timestamp)),
     datasets: [
       {
         label: 'Light Intensity (%)',
@@ -263,7 +289,7 @@ const LightMonitor = () => {
               <LightIntensityIcon />
             </div>
             <div className="text-4xl font-bold mb-2 text-[#242424]">
-              {isLoading ? 'Loading...' : `${currentLight}%`}
+              {isLoading ? 'Loading...' : `${currentLight.toFixed(1)}%`}
             </div>
             <div className={`font-medium ${status.color}`}>
               {status.text}
@@ -277,11 +303,11 @@ const LightMonitor = () => {
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Minimum:</span>
-                <span className="font-medium text-[#242424]">{stats.min}%</span>
+                <span className="font-medium text-[#242424]">{stats.min.toFixed(1)}%</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Maximum:</span>
-                <span className="font-medium text-[#242424]">{stats.max}%</span>
+                <span className="font-medium text-[#242424]">{stats.max.toFixed(1)}%</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Average:</span>
@@ -291,12 +317,12 @@ const LightMonitor = () => {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Median:</span>
-                <span className="font-medium text-[#242424]">{stats.median}%</span>
+                <span className="font-medium text-[#242424]">{stats.median.toFixed(1)}%</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Standard Deviation:</span>
                 <span className="font-medium text-[#242424]">
-                  {isNaN(stats.stdDev) ? 'N/A' : stats.stdDev.toFixed(2)}%
+                  {isNaN(stats.stdDev) ? 'N/A' : stats.stdDev.toFixed(1)}%
                 </span>
               </div>
             </div>
