@@ -1,3 +1,5 @@
+### Test file, contain basic connection to ada fruit and example
+
 
 import sys
 from Adafruit_IO import MQTTClient
@@ -17,7 +19,6 @@ from Adafruit_IO import Client
 AIO_FEED_IDS = ["color change", "fan", "humid", "light", "switch", "temp", "text"]
 AIO_USERNAME = "tarominhhieu1534"
 AIO_KEY = "aio_FxwF25uEzlH2XJLJ58MqDqv2rMkE"
-
 
 
 def connected(client):
