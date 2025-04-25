@@ -14,6 +14,7 @@ import {
 } from 'chart.js';
 import Sidebar from '../../components/layout/Sidebar';
 import Header from '../../components/layout/Header';
+import { HumidityIcon } from '../../components/ui/Icons';
 
 ChartJS.register(
     CategoryScale,
@@ -103,6 +104,100 @@ const HumidityMonitor = () => {
         median: 50,
         stdDev: 1.5
     });
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // Function to fetch latest humidity data from API
+    const fetchLatestHumidityData = async () => {
+        try {
+            setIsLoading(true);
+            setError(null);
+            
+            // Fetch latest humidity data from the API
+            const response = await fetch('http://localhost:8000/sensor/humid/latest');
+            
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Update current humidity value - ensure it's a number and rounded to 1 decimal
+            const humidityValue = parseFloat(parseFloat(data.value).toFixed(1));
+            setCurrentHumidity(humidityValue);
+            
+            // Update stats with the new value
+            setStats(prevStats => ({
+                ...prevStats,
+                current: humidityValue
+            }));
+            
+        } catch (err) {
+            console.error('Error fetching latest humidity data:', err);
+            setError('Failed to fetch latest humidity data');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Function to fetch historical humidity data from API
+    const fetchHistoricalHumidityData = async () => {
+        try {
+            setIsLoading(true);
+            setError(null);
+            
+            // Fetch historical humidity data from the API
+            const response = await fetch('http://localhost:8000/sensor/humid/history1000');
+            
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Transform API data to match our HumidityData interface
+            const transformedData: HumidityData[] = data.map((item: any) => ({
+                value: parseFloat(parseFloat(item.value).toFixed(1)), // Convert string to number and round to 1 decimal
+                timestamp: item.timestamp
+            }));
+            
+            // Update historical data
+            setHistoricalData(transformedData);
+            
+            // Calculate and update stats
+            const newStats = calculateStats(transformedData);
+            setStats(newStats);
+            
+        } catch (err) {
+            console.error('Error fetching historical humidity data:', err);
+            setError('Failed to fetch historical humidity data');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Function to filter data based on active tab
+    const filterDataByTimeRange = (data: HumidityData[], tab: 'Day' | 'Week' | 'Month' | 'Year'): HumidityData[] => {
+        const now = new Date();
+        let cutoffDate = new Date();
+        
+        switch (tab) {
+            case 'Day':
+                cutoffDate.setDate(now.getDate() - 1);
+                break;
+            case 'Week':
+                cutoffDate.setDate(now.getDate() - 7);
+                break;
+            case 'Month':
+                cutoffDate.setMonth(now.getMonth() - 1);
+                break;
+            case 'Year':
+                cutoffDate.setFullYear(now.getFullYear() - 1);
+                break;
+        }
+        
+        return data.filter(item => new Date(item.timestamp) >= cutoffDate);
+    };
 
     useEffect(() => {
         // Initialize with some demo data
@@ -112,35 +207,25 @@ const HumidityMonitor = () => {
         setStats(initialStats);
         setCurrentHumidity(initialStats.current);
 
+        // Fetch real data from API
+        fetchLatestHumidityData();
+        fetchHistoricalHumidityData();
+
         // Update data every 5 seconds
         const interval = setInterval(() => {
-            const newHumidity = generateRandomHumidity(45, 55);
-            const newDataPoint = {
-                value: newHumidity,
-                timestamp: new Date().toISOString()
-            };
-
-            // Update all states atomically
-            setHistoricalData(prevData => {
-                const updatedData = [...prevData.slice(-49), newDataPoint];
-                const newStats = calculateStats(updatedData);
-
-                // Update stats and current humidity in the next microtask
-                Promise.resolve().then(() => {
-                    setStats(newStats);
-                    setCurrentHumidity(newHumidity);
-                });
-
-                return updatedData;
-            });
+            fetchLatestHumidityData();
         }, 5000);
 
-        // TODO: Add API call to fetch current humidity
-        // TODO: Add API call to fetch historical data (limit 1000)
-        // TODO: Calculate statistics from historical data
-        // TODO: Implement time range filtering based on activeTab (Day/Week/Month/Year)
         return () => clearInterval(interval);
-    }, [activeTab]);
+    }, []); // Remove activeTab dependency to prevent refetching on tab change
+
+    // Add a new useEffect to update filtered data when activeTab changes
+    useEffect(() => {
+        if (historicalData.length > 0) {
+            const filteredData = filterDataByTimeRange(historicalData, activeTab);
+            // We don't need to set state here as we'll use the filtered data directly in the chart
+        }
+    }, [activeTab, historicalData]);
 
     const getHumidityStatus = (humidity: number) => {
         if (humidity >= 70) return { text: 'Too Humid', color: 'text-red-600' };
@@ -149,12 +234,33 @@ const HumidityMonitor = () => {
         return { text: 'Optimal Humidity', color: 'text-green-600' };
     };
 
+    // Filter data based on active tab
+    const filteredData = filterDataByTimeRange(historicalData, activeTab);
+
+    // Format date labels based on the active tab
+    const formatDateLabel = (timestamp: string) => {
+        const date = new Date(timestamp);
+        
+        switch (activeTab) {
+            case 'Day':
+                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            case 'Week':
+                return date.toLocaleDateString([], { weekday: 'short', hour: '2-digit' });
+            case 'Month':
+                return date.toLocaleDateString([], { day: 'numeric', month: 'short' });
+            case 'Year':
+                return date.toLocaleDateString([], { month: 'short' });
+            default:
+                return date.toLocaleTimeString();
+        }
+    };
+
     const chartData = {
-        labels: historicalData.map(d => new Date(d.timestamp).toLocaleTimeString()),
+        labels: filteredData.map(d => formatDateLabel(d.timestamp)),
         datasets: [
             {
                 label: 'Humidity (%)',
-                data: historicalData.map(d => d.value),
+                data: filteredData.map(d => d.value),
                 borderColor: '#93C5FD',
                 tension: 0.1,
                 pointRadius: 4,
@@ -177,11 +283,17 @@ const HumidityMonitor = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Current Humidity Card */}
                     <div className="bg-white rounded-2xl p-6 shadow-sm">
-                        <h2 className="text-xl font-semibold text-[#242424] mb-4">Current Humidity</h2>
-                        <div className="text-4xl font-bold mb-2 text-[#242424]">{currentHumidity}%</div>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-semibold text-[#242424]">Current Humidity</h2>
+                            <HumidityIcon />
+                        </div>
+                        <div className="text-4xl font-bold mb-2 text-[#242424]">
+                            {isLoading ? 'Loading...' : `${currentHumidity.toFixed(1)}%`}
+                        </div>
                         <div className={`font-medium ${status.color}`}>
                             {status.text}
                         </div>
+                        {error && <div className="text-red-500 mt-2">{error}</div>}
                     </div>
 
                     {/* Statistics Card */}
@@ -190,23 +302,27 @@ const HumidityMonitor = () => {
                         <div className="space-y-3">
                             <div className="flex justify-between items-center">
                                 <span className="text-gray-600">Minimum:</span>
-                                <span className="font-medium text-[#242424]">{stats.min}%</span>
+                                <span className="font-medium text-[#242424]">{stats.min.toFixed(1)}%</span>
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-gray-600">Maximum:</span>
-                                <span className="font-medium text-[#242424]">{stats.max}%</span>
+                                <span className="font-medium text-[#242424]">{stats.max.toFixed(1)}%</span>
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-gray-600">Average:</span>
-                                <span className="font-medium text-[#242424]">{stats.avg.toFixed(1)}%</span>
+                                <span className="font-medium text-[#242424]">
+                                    {isNaN(stats.avg) ? 'N/A' : stats.avg.toFixed(1)}%
+                                </span>
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-gray-600">Median:</span>
-                                <span className="font-medium text-[#242424]">{stats.median}%</span>
+                                <span className="font-medium text-[#242424]">{stats.median.toFixed(1)}%</span>
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-gray-600">Standard Deviation:</span>
-                                <span className="font-medium text-[#242424]">{stats.stdDev.toFixed(2)}%</span>
+                                <span className="font-medium text-[#242424]">
+                                    {isNaN(stats.stdDev) ? 'N/A' : stats.stdDev.toFixed(1)}%
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -234,40 +350,45 @@ const HumidityMonitor = () => {
                             </div>
                         </div>
                         <div className="h-80">
-                            <Line
-                                data={chartData}
-                                options={{
-                                    responsive: true,
-                                    maintainAspectRatio: false,
-                                    animation: {
-                                        duration: 300
-                                    },
-                                    plugins: {
-                                        legend: {
-                                            display: false
-                                        }
-                                    },
-                                    scales: {
-                                        x: {
-                                            grid: {
+                            {isLoading ? (
+                                <div className="flex items-center justify-center h-full">
+                                    <div className="text-gray-500">Loading chart data...</div>
+                                </div>
+                            ) : error ? (
+                                <div className="flex items-center justify-center h-full">
+                                    <div className="text-red-500">{error}</div>
+                                </div>
+                            ) : (
+                                <Line
+                                    data={chartData}
+                                    options={{
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        animation: {
+                                            duration: 300
+                                        },
+                                        plugins: {
+                                            legend: {
                                                 display: false
-                                            },
-                                            ticks: {
-                                                maxRotation: 0,
-                                                autoSkip: true,
-                                                maxTicksLimit: 10
                                             }
                                         },
-                                        y: {
-                                            grid: {
-                                                color: '#f3f4f6'
+                                        scales: {
+                                            y: {
+                                                beginAtZero: true,
+                                                max: 100,
+                                                grid: {
+                                                    color: 'rgba(0, 0, 0, 0.05)'
+                                                }
                                             },
-                                            min: Math.floor(stats.min - 1),
-                                            max: Math.ceil(stats.max + 1)
+                                            x: {
+                                                grid: {
+                                                    display: false
+                                                }
+                                            }
                                         }
-                                    }
-                                }}
-                            />
+                                    }}
+                                />
+                            )}
                         </div>
                     </div>
                 </div>

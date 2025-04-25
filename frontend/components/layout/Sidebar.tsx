@@ -38,7 +38,7 @@ const Sidebar: React.FC = () => {
         <Link href="/humidity" className={getLinkClass('/humidity')}>
           <HumidityIcon />
         </Link>
-        <Link href="/light" className={getLinkClass('/light')}>
+        <Link href="/light_itensity" className={getLinkClass('/light_itensity')}>
           <LightIntensityIcon />
         </Link>
         <button className="p-2 hover:bg-purple-500 rounded-lg transition-colors duration-200">
