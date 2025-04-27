@@ -1,46 +1,115 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-import sys
-import os
-from Adafruit_IO import MQTTClient, Client
-import time
-import random
-import threading
+import uvicorn
+from routers import fan, light, sensor, login, activitylog
 from contextlib import asynccontextmanager
+from adafruitConnection import run_mqtt_thread
+import os
+from supabase import create_client, Client
+import threading
+from threading import Lock
+import time
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
+from datetime import datetime, timedelta, timezone
 
+class ThresholdMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        app = request.app
+        with app.state.max_request_lock:
+            # print("Hello app state 1")
+            # If app is in cooldown mode
+            if app.state.cooldown_until:
+                # print("Hello app state cooldown until")
+                if datetime.now(timezone.utc).replace(tzinfo=None) < app.state.cooldown_until:
+                    return JSONResponse(
+                        {"error": "Temporarily blocked due to high activity. Try again later."},
+                        status_code=429
+                    )
+                else:
+                    # Cooldown expired
+                    app.state.cooldown_until = None
+                    app.state.max_request_counter = 0
+
+            # Normal threshold check
+            if app.state.max_request_counter >= app.state.max_limit:
+                # Start cooldown for 2 minutes
+                app.state.cooldown_until = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=2)
+                return JSONResponse(
+                    {"error": "Too many requests. You are temporarily blocked for 2 minutes."},
+                    status_code=429
+                )
+
+            # Count this request
+            app.state.max_request_counter += 1
+            # print(app.state.max_request_counter)
+
+        return await call_next(request)
+
+# Reset to counter every 1 min
+def check_to_reset(app: FastAPI):
+    while True:
+        time.sleep(60)  # 1 minutes
+        with app.state.max_request_lock:
+            print("Hello ", app.state.max_request_counter)
+            app.state.max_request_counter = 0
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # A dedicated thread to constantly received new data from adafruit
+    run_mqtt_thread()
+
+    # Set up connection to Cloud Database
+    url: str = "https://uptilkatqzrxvsqzcemx.supabase.co"
+    key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVwdGlsa2F0cXpyeHZzcXpjZW14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1NjkyOTMsImV4cCI6MjA2MTE0NTI5M30.XrdLClY2uTnKp9htHIU1dae2WdOXVbLVD5GwP0lW7mA"
+
+    supabase: Client = create_client(url, key)
+    app.state.db = supabase
+    print("Finish set up connection with Supabase DB.")
+
+    # Set up max action threshold + Lock
+    app.state.max_request_counter = 0
+    app.state.max_request_lock = Lock()
+    app.state.max_limit = 25
+    app.state.cooldown_until = None
+
+    # A dedicated thread that constantly checking on the threshold and reset it
+    threading.Thread(target=check_to_reset, args = (app,), daemon=True).start()
+
+    yield  # Yield to let FastAPI start the app
+
+    # No clean up needed
+    print("No clean up needed with Supabase DB.")
+
+    
 
 # Initialize FastAPI app
-app = FastAPI()
+app = FastAPI(lifespan= lifespan)
 
 # Middleware for CORS
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://192.168.56.1:3000",
 ]
 
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    ThresholdMiddleware
 )
 
-# Adafruit IO Credentials
-AIO_FEED_IDS = ["color change", "fan", "humid", "light", "switch", "temp", "text"]
-# AIO_USERNAME = "tarominhhieu1534"
-# AIO_KEY = "aio_tlZn50xs0OUPnRO7NVdAB90x4qMu"
-AIO_USERNAME = "CheemsPoGgErs"
-AIO_KEY = "aio_BNfP53iMTWSttQD5OeKgifDwv3K0"
-
-# Create Adafruit IO REST API Client
-aio = Client(AIO_USERNAME, AIO_KEY)
-
-# Create Adafruit IO MQTT Client
-mqtt_client = MQTTClient(AIO_USERNAME, AIO_KEY)
-
-#### API section
-latest_temp = None
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+# Include routers
+app.include_router(fan.router)
+app.include_router(light.router)
+app.include_router(sensor.router)
+app.include_router(login.router)
+app.include_router(activitylog.router)
 
 @app.get("/")
 async def root():
@@ -48,127 +117,10 @@ async def root():
     Root endpoint to check API status.
     """
     return { "Hello World" }
+    
 
-# Include the employee router
-# app.include_router(employee.router)
-# app.include_router(patient.router)
-
-# Route to get the latest temperature data
-@app.get("/temp/latest")
-async def get_latest_temp():
-    try:
-        latest_value = aio.receive(AIO_FEED_IDS[5])  # Fetch latest value
-        return {
-            "value": latest_value.value,
-            "timestamp": latest_value.created_at
-        }
-    except Exception as e:
-        return {"error": str(e)}
-
-# Route to get historical temperature data - all records
-@app.get("/temp/history")
-async def get_temp_history():
-    try:
-        history = aio.data(AIO_FEED_IDS[5]) 
-        return [
-            {"value": entry.value, "timestamp": entry.created_at} for entry in history
-        ]
-    except Exception as e:
-        return {"error": str(e)}
-
-# Route to get historical light data - all records  
-@app.get("/light/history")
-async def get_temp_history():
-    try:
-        history = aio.data(AIO_FEED_IDS[3])  # Get last 5 entries
-        return [
-            {"value": entry.value, "timestamp": entry.created_at} for entry in history
-        ]
-    except Exception as e:
-        return {"error": str(e)}
-
-
-#### Ada Fruit Connection Section
-def connected(client):
-    print("Connected to Adafruit IO!")
-    for feed in AIO_FEED_IDS:
-        client.subscribe(feed)  # Subscribe to all feeds
-
-def disconnected(client):
-    print("Disconnected from Adafruit IO!")
-    sys.exit(1)
-
-def message(client, feed_id, payload):
-    global latest_temp
-    print(f"Received: {feed_id} = {payload}")
-    if feed_id == AIO_FEED_IDS[5]:
-        latest_temp = payload  # Store latest temperature
-
-def publish_random_data(client, id):
-    value = random.randint(0, 100)  # Generate a random value
-    print(f"Publishing {value:.2f} to {AIO_FEED_IDS[id]}")
-    client.publish( AIO_FEED_IDS[id] , value)
-
-# Event to signal threads to stop
-stop_event = threading.Event()
-mqtt_ready_event = threading.Event() 
-
-def random_loop(client):
-    mqtt_ready_event.wait()  # Wait for MQTT signal
-    while not stop_event.is_set():
-        value = random.randint(0, 6)
-        publish_random_data(client, 1)
-        time.sleep(5)
-    print("Random loop stopped.")
-
-
-# ✅ Start MQTT Client in a separate thread
-def start_mqtt():
-    mqtt_client.on_message = message
-    mqtt_client.on_connect = connected
-    mqtt_client.on_disconnect = disconnected
-    mqtt_client.connect()
-    mqtt_client.loop_background()  # ✅ Runs MQTT in the background
-
-    # ✅ Polling loop to check if MQTT is really connected
-    while not mqtt_client.is_connected():
-        time.sleep(0.5)  # Check every 500ms
-
-    # ✅ Signal that MQTT is ready
-    mqtt_ready_event.set()
-    while not stop_event.is_set():  # ✅ Keep checking stop_event
-        time.sleep(1)
-    print("MQTT client stopped.")
-
-
-
-
-# ✅ Start FastAPI in main thread and MQTT in a background thread
+# ✅ Start FastAPI
 if __name__ == "__main__":
-    # import uvicorn
-    # uvicorn.run(app, host="0.0.0.0", port=8000)
-    try:
-        # Start MQTT listener thread
-        # Thread này dùng đề listen feedback từ Adafruit
-        mqtt_thread = threading.Thread(target=start_mqtt, daemon=True)
-        mqtt_thread.start()
-        
-        # Start random_loop thread
-        # Thread này dùng để push random data lên Ada feed
-        random_thread = threading.Thread(target=random_loop, args=(mqtt_client,), daemon=True)
-        random_thread.start()
-
-        # Start FastAPI with Uvicorn
-        # Main thread sẽ đc dùng để host API server, nơi frontend get data từ backend
-        import uvicorn
-        uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)
-
-    except KeyboardInterrupt:
-        print("Shutting down...")
-
-    finally:
-        # Signal threads to stop
-        stop_event.set()
-        mqtt_thread.join()
-        random_thread.join()
-        print("All threads stopped. Exiting.")
+    # Start FastAPI with Uvicorn
+    # Main thread sẽ đc dùng để host API server, nơi frontend get data từ backend
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)

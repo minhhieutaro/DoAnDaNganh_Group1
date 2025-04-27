@@ -2,47 +2,39 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import useAuth from '@/hooks/useAuth';
 
 const LoginForm = () => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   
   const router = useRouter();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccess('');
     
     try {
-      // TODO: Integrate with backend API
-      // Example API call:
-      // const response = await fetch('/api/auth/login', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email, password, rememberMe })
-      // });
+      // Gọi hàm login từ AuthContext
+      await login(username, password, rememberMe);
       
-      // if (!response.ok) {
-      //   throw new Error('Login failed');
-      // }
+      // Hiển thị thông báo thành công
+      setSuccess('Đăng nhập thành công! Đang chuyển hướng...');
       
-      // const data = await response.json();
-      
-      // Simulate successful login for now
-      console.log('Login attempted with:', { email, password, rememberMe });
-      
-      // Redirect to dashboard on success
+      // Không cần setTimeout vì chuyển hướng được xử lý trong AuthContext
       setTimeout(() => {
-        router.push('/');
-      }, 1000);
-      
-    } catch (err) {
+        router.push('/home');
+      }, 2000);
+    } catch (err: any) {
       console.error('Login error:', err);
-      setError('Invalid email or password');
+      setError(err.message || 'Invalid username or password');
     } finally {
       setLoading(false);
     }
@@ -56,19 +48,25 @@ const LoginForm = () => {
         </div>
       )}
       
+      {success && (
+        <div className="p-3 bg-green-50 text-green-500 rounded-md text-sm">
+          {success}
+        </div>
+      )}
+      
       <div className="rounded-md shadow-sm -space-y-px">
         <div>
-          <label htmlFor="email-address" className="sr-only">Email address</label>
+          <label htmlFor="username" className="sr-only">Username</label>
           <input
-            id="email-address"
-            name="email"
-            type="email"
-            autoComplete="email"
+            id="username"
+            name="username"
+            type="text"
+            autoComplete="username"
             required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
             className="appearance-none rounded-t-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-[#7a40f2] focus:border-[#7a40f2] focus:z-10 sm:text-sm"
-            placeholder="Email address"
+            placeholder="Username"
           />
         </div>
         <div>

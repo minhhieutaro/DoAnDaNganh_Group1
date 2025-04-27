@@ -5,79 +5,221 @@ import Sidebar from '../../components/layout/Sidebar';
 import Header from '../../components/layout/Header';
 import { FanIcon } from '../../components/ui/Icons';
 
+// API Base URL
+const API_BASE_URL = 'http://localhost:3000';
+
 const DeviceControl = () => {
     // Fan states
     const [isFanOn, setIsFanOn] = useState(false);
     const [speed, setSpeed] = useState(50);
+    const [fanLoading, setFanLoading] = useState(false);
 
-
-    const handleSpeedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newSpeed = parseInt(e.target.value);
-        setSpeed(newSpeed);
-        if (!isFanOn) setIsFanOn(true);
-        // TODO: Add API call to update fan speed
-    };
-
-    const handleFanToggle = () => {
-        setIsFanOn(!isFanOn);
-        if (!isFanOn) {
-            // TODO: Add API call to turn on fan with current speed
-        } else {
-            // TODO: Add API call to turn off fan
-        }
-    };
-    
-    const incrementSpeed = () => {
-        if (speed < 100) {
-            setSpeed(speed + 5);
-            if (!isFanOn) setIsFanOn(true);
-            // TODO: Add API call to update fan speed
-        }
-    };
-    
-    const decrementSpeed = () => {
-        if (speed > 0) {
-            setSpeed(speed - 5);
-            if (speed - 5 <= 0) {
-                setIsFanOn(false);
-                // TODO: Add API call to turn off fan
-            } else if (!isFanOn) {
-                setIsFanOn(true);
-                // TODO: Add API call to turn on fan
-            }
-            // TODO: Add API call to update fan speed
-        }
-    };
-    
     // Light states
     const [isLightOn, setIsLightOn] = useState(false);
     const [isColorDropdownOpen, setIsColorDropdownOpen] = useState(false);
+    const [lightLoading, setLightLoading] = useState(false);
     
     // LED colors
     const colors = [
-        { name: 'RED', value: '#FF5252' },
-        { name: 'GREEN', value: '#4CAF50' },
-        { name: 'BLUE', value: '#2196F3' },
-        { name: 'YELLOW', value: '#FFEB3B' },
-        { name: 'PURPLE', value: '#9C27B0' },
-        { name: 'WHITE', value: '#FFFFFF' },
+        { name: 'RED', value: '#FF0000' },
+        { name: 'GREEN', value: '#00B050' },
+        { name: 'BLUE', value: '#00CFFF' }, 
+        { name: 'YELLOW', value: '#FFFF00' },
+        { name: 'PURPLE', value: '#7E3F98' },
+        { name: 'WHITE', value: '#F2F2F2' },
+        { name: 'BLACK', value: '#2E2E2E' },
+        { name: 'MAGENTA', value: '#FF00FF' },
+        { name: 'ORANGE', value: '#F79646' },
     ];
     
     const [selectedColor, setSelectedColor] = useState(colors[0]); // Default Red
-
-    const handleLightToggle = () => {
-        setIsLightOn(!isLightOn);
-        if (!isLightOn) {
-            // TODO: Add API call to turn on light with current color
-        } else {
-            // TODO: Add API call to turn off light
+    
+    // Bật quạt với tốc độ chỉ định
+    const turnOnFan = async (fanSpeed: number) => {
+        try {
+            setFanLoading(true);
+            const response = await fetch(`${API_BASE_URL}/fan/fan/on`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ speed: fanSpeed }),
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to turn on fan');
+            }
+            
+            const data = await response.json();
+            console.log('Fan turned on:', data);
+            setIsFanOn(true);
+        } catch (error) {
+            console.error('Error turning on fan:', error);
+            alert('Failed to turn on fan. Please try again.');
+        } finally {
+            setFanLoading(false);
         }
     };
     
-    const handleColorSelect = (color: typeof colors[0]) => {
+    // Tắt quạt
+    const turnOffFan = async () => {
+        try {
+            setFanLoading(true);
+            const response = await fetch(`${API_BASE_URL}/fan/fan/off`, {
+                method: 'POST',
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to turn off fan');
+            }
+            
+            const data = await response.json();
+            console.log('Fan turned off:', data);
+            setIsFanOn(false);
+        } catch (error) {
+            console.error('Error turning off fan:', error);
+            alert('Failed to turn off fan. Please try again.');
+        } finally {
+            setFanLoading(false);
+        }
+    };
+    
+    // Bật đèn
+    const turnOnLight = async () => {
+        try {
+            setLightLoading(true);
+            const response = await fetch(`${API_BASE_URL}/light/switch/on`, {
+                method: 'POST',
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to turn on light');
+            }
+            
+            const data = await response.json();
+            console.log('Light turned on:', data);
+            setIsLightOn(true);
+            
+            // Sau khi bật đèn, cũng cập nhật màu sắc hiện tại
+            await changeColor(selectedColor.name);
+        } catch (error) {
+            console.error('Error turning on light:', error);
+            alert('Failed to turn on light. Please try again.');
+        } finally {
+            setLightLoading(false);
+        }
+    };
+    
+    // Tắt đèn
+    const turnOffLight = async () => {
+        try {
+            setLightLoading(true);
+            const response = await fetch(`${API_BASE_URL}/light/switch/off`, {
+                method: 'POST',
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to turn off light');
+            }
+            
+            const data = await response.json();
+            console.log('Light turned off:', data);
+            setIsLightOn(false);
+        } catch (error) {
+            console.error('Error turning off light:', error);
+            alert('Failed to turn off light. Please try again.');
+        } finally {
+            setLightLoading(false);
+        }
+    };
+    
+    // Thay đổi màu đèn
+    const changeColor = async (colorName: string) => {
+        try {
+            setLightLoading(true);
+            const response = await fetch(`${API_BASE_URL}/light/switch/colorchange`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ code: colorName }),
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to change light color');
+            }
+            
+            const data = await response.json();
+            console.log('Light color changed:', data);
+        } catch (error) {
+            console.error('Error changing light color:', error);
+            alert('Failed to change light color. Please try again.');
+        } finally {
+            setLightLoading(false);
+        }
+    };
+
+    // === EVENT HANDLERS ===
+
+    const handleSpeedChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newSpeed = parseInt(e.target.value);
+        setSpeed(newSpeed);
+        
+        if (newSpeed > 0) {
+            if (!isFanOn) {
+                await turnOnFan(newSpeed);
+            } else {
+                await turnOnFan(newSpeed); // Cập nhật tốc độ quạt
+            }
+        } else {
+            await turnOffFan(); // Tắt quạt nếu tốc độ = 0
+        }
+    };
+
+    const handleFanToggle = async () => {
+        if (!isFanOn) {
+            await turnOnFan(speed);
+        } else {
+            await turnOffFan();
+        }
+    };
+    
+    const incrementSpeed = async () => {
+        if (speed < 100) {
+            const newSpeed = speed + 5;
+            setSpeed(newSpeed);
+            await turnOnFan(newSpeed);
+        }
+    };
+    
+    const decrementSpeed = async () => {
+        if (speed > 0) {
+            const newSpeed = speed - 5;
+            setSpeed(newSpeed);
+            
+            if (newSpeed <= 0) {
+                await turnOffFan();
+            } else {
+                await turnOnFan(newSpeed);
+            }
+        }
+    };
+    
+    const handleLightToggle = async () => {
+        if (!isLightOn) {
+            await turnOnLight();
+        } else {
+            await turnOffLight();
+        }
+    };
+    
+    const handleColorSelect = async (color: typeof colors[0]) => {
         setSelectedColor(color);
         setIsColorDropdownOpen(false);
-        // TODO: Add API call to change light color
+        
+        if (isLightOn) {
+            await changeColor(color.name);
+        }
     };
 
     return (
@@ -96,12 +238,13 @@ const DeviceControl = () => {
                         </div>
                         <button
                             onClick={handleFanToggle}
-                            className={`px-6 py-2 rounded-full text-sm font-medium transition-colors duration-200 ${isFanOn
-                                ? 'bg-red-500 hover:bg-red-600 text-white'
-                                : 'bg-[#7a40f2] hover:bg-[#6930e0] text-white'
-                                }`}
+                            disabled={fanLoading}
+                            className={`px-6 py-2 rounded-full text-sm font-medium transition-colors duration-200 ${
+                                fanLoading ? 'bg-gray-400 cursor-not-allowed' :
+                                isFanOn ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-[#7a40f2] hover:bg-[#6930e0] text-white'
+                            }`}
                         >
-                            {isFanOn ? 'Turn Off' : 'Turn On'}
+                            {fanLoading ? 'Processing...' : (isFanOn ? 'Turn Off' : 'Turn On')}
                         </button>
                     </div>
                     
@@ -133,7 +276,8 @@ const DeviceControl = () => {
                                         max="100"
                                         value={speed}
                                         onChange={handleSpeedChange}
-                                        className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer"
+                                        disabled={fanLoading}
+                                        className={`w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer ${fanLoading ? 'opacity-50' : ''}`}
                                         style={{
                                             background: `linear-gradient(to right, 
                                                 #7a40f2 0%, 
@@ -147,13 +291,15 @@ const DeviceControl = () => {
                                 <div className="flex justify-between w-full">
                                     <button
                                         onClick={decrementSpeed}
-                                        className="w-16 h-16 rounded-full bg-[#7a40f2] text-white flex items-center justify-center text-3xl font-medium focus:outline-none"
+                                        disabled={fanLoading}
+                                        className={`w-16 h-16 rounded-full bg-[#7a40f2] text-white flex items-center justify-center text-3xl font-medium focus:outline-none ${fanLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     >
                                         -
                                     </button>
                                     <button
                                         onClick={incrementSpeed}
-                                        className="w-16 h-16 rounded-full bg-[#7a40f2] text-white flex items-center justify-center text-3xl font-medium focus:outline-none"
+                                        disabled={fanLoading}
+                                        className={`w-16 h-16 rounded-full bg-[#7a40f2] text-white flex items-center justify-center text-3xl font-medium focus:outline-none ${fanLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     >
                                         +
                                     </button>
@@ -172,12 +318,13 @@ const DeviceControl = () => {
                         </div>
                         <button
                             onClick={handleLightToggle}
-                            className={`px-6 py-2 rounded-full text-sm font-medium transition-colors duration-200 ${isLightOn
-                                ? 'bg-red-500 hover:bg-red-600 text-white'
-                                : 'bg-[#7a40f2] hover:bg-[#6930e0] text-white'
-                                }`}
+                            disabled={lightLoading}
+                            className={`px-6 py-2 rounded-full text-sm font-medium transition-colors duration-200 ${
+                                lightLoading ? 'bg-gray-400 cursor-not-allowed' :
+                                isLightOn ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-[#7a40f2] hover:bg-[#6930e0] text-white'
+                            }`}
                         >
-                            {isLightOn ? 'Turn Off' : 'Turn On'}
+                            {lightLoading ? 'Processing...' : (isLightOn ? 'Turn Off' : 'Turn On')}
                         </button>
                     </div>
                     
@@ -190,7 +337,8 @@ const DeviceControl = () => {
                             <div className="relative">
                                 <button
                                     onClick={() => setIsColorDropdownOpen(!isColorDropdownOpen)}
-                                    className="w-full flex items-center text-black justify-between px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7a40f2] focus:border-transparent bg-gray-50"
+                                    disabled={lightLoading}
+                                    className={`w-full flex items-center text-black justify-between px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7a40f2] focus:border-transparent bg-gray-50 ${lightLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                     <div className="flex items-center">
                                         <div 

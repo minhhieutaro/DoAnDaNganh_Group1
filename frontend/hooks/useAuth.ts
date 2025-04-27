@@ -1,7 +1,7 @@
 'use client';
 
 import { useContext } from 'react';
-import AuthContext from '../components/context/AuthContext';
+import AuthContext from '@/components/context/AuthContext';
 
 // This hook is a simplified way to access the auth context
 const useAuth = () => {

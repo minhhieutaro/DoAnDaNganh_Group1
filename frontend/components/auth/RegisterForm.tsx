@@ -2,16 +2,20 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import useAuth from '@/hooks/useAuth';
 
 const RegisterForm = () => {
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   
   const router = useRouter();
+  const { register } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,35 +26,32 @@ const RegisterForm = () => {
       return;
     }
     
+    if (!dateOfBirth) {
+      setError("Date of birth is required");
+      return;
+    }
+    
     setLoading(true);
     setError('');
+    setSuccess('');
     
     try {
-      // TODO: Integrate with backend API
-      // Example API call:
-      // const response = await fetch('/api/auth/register', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ name, email, password })
-      // });
+      // Chuyển đổi chuỗi ngày thành đối tượng Date
+      const dobDate = new Date(dateOfBirth);
       
-      // if (!response.ok) {
-      //   throw new Error('Registration failed');
-      // }
+      // Gọi hàm register từ AuthContext
+      await register(username, password, email, dobDate);
       
-      // const data = await response.json();
+      // Hiển thị thông báo thành công
+      setSuccess('Đăng ký thành công! Đang chuyển hướng đến trang đăng nhập...');
       
-      // Simulate successful registration for now
-      console.log('Registration attempted with:', { name, email, password });
-      
-      // Redirect to login on success
+      // Chờ một chút để người dùng thấy thông báo thành công, sau đó chuyển hướng thủ công
       setTimeout(() => {
-        router.push('/auth/login');
-      }, 1000);
-      
-    } catch (err) {
+        router.push('/login');
+      }, 2000);
+    } catch (err: any) {
       console.error('Registration error:', err);
-      setError('Registration failed. Please try again.');
+      setError(err.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -64,19 +65,25 @@ const RegisterForm = () => {
         </div>
       )}
       
+      {success && (
+        <div className="p-3 bg-green-50 text-green-500 rounded-md text-sm">
+          {success}
+        </div>
+      )}
+      
       <div className="rounded-md shadow-sm -space-y-px">
         <div>
-          <label htmlFor="name" className="sr-only">Full name</label>
+          <label htmlFor="username" className="sr-only">Username</label>
           <input
-            id="name"
-            name="name"
+            id="username"
+            name="username"
             type="text"
-            autoComplete="name"
+            autoComplete="username"
             required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
             className="appearance-none rounded-t-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-[#7a40f2] focus:border-[#7a40f2] focus:z-10 sm:text-sm"
-            placeholder="Full name"
+            placeholder="Username"
           />
         </div>
         <div>
@@ -93,6 +100,19 @@ const RegisterForm = () => {
             placeholder="Email address"
           />
         </div>
+        <div>
+          <label htmlFor="date-of-birth" className="sr-only">Date of Birth</label>
+          <input
+            id="date-of-birth"
+            name="date-of-birth"
+            type="date"
+            required
+            value={dateOfBirth}
+            onChange={(e) => setDateOfBirth(e.target.value)}
+            className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-[#7a40f2] focus:border-[#7a40f2] focus:z-10 sm:text-sm"
+          />
+        </div>
+
         <div>
           <label htmlFor="password" className="sr-only">Password</label>
           <input

@@ -1,25 +1,21 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-
-// User type definition
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-}
+import User from '@/models/User';
 
 // Auth context type definition
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  login: (username: string, password: string, rememberMe?: boolean) => Promise<void>;
+  register: (username: string, password: string, email: string, dateOfBirth: Date) => Promise<void>;
+  logout: () => Promise<void>;
 }
+
+// API Base URL
+const API_BASE_URL = 'http://localhost:8000';
 
 // Create the context with default values
 const AuthContext = createContext<AuthContextType>({
@@ -28,11 +24,8 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   login: async () => {},
   register: async () => {},
-  logout: () => {},
+  logout: async () => {},
 });
-
-// Custom hook to use the auth context
-export const useAuth = () => useContext(AuthContext);
 
 // Provider component
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -44,22 +37,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        // Check for token in localStorage
-        const token = localStorage.getItem('authToken');
+        // Check for user data in localStorage first, then sessionStorage
+        const storedUser = localStorage.getItem('user') || sessionStorage.getItem('user');
+        console.log('Checking auth status, stored user:', storedUser);
         
-        if (token) {
-          // TODO: Validate token with backend API
-          // For now, just simulate a logged-in user if token exists
-          setUser({
-            id: '1',
-            name: 'Demo User',
-            email: 'demo@example.com',
-            role: 'user',
-          });
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          setUser(userData);
+          console.log('User authenticated from storage:', userData);
         }
       } catch (error) {
-        // If token is invalid, clear it
-        localStorage.removeItem('authToken');
+        // If user data is invalid, clear it
+        console.error('Error checking auth status:', error);
+        localStorage.removeItem('user');
+        sessionStorage.removeItem('user');
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -69,83 +60,93 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     checkAuthStatus();
   }, []);
 
-  // Login function
-  const login = async (email: string, password: string, rememberMe = false) => {
+  // Login function - connect to backend API
+  const login = async (username: string, password: string, rememberMe = false) => {
     setIsLoading(true);
     try {
-      // TODO: Connect to backend API for login
-      // const response = await fetch('/api/auth/login', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({ email, password }),
-      // });
+      const response = await fetch(`${API_BASE_URL}/login/authentication`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      });
       
-      // if (!response.ok) throw new Error('Authentication failed');
+      const data = await response.json();
       
-      // const data = await response.json();
-      
-      // Simulate successful login
-      const mockToken = 'mock-jwt-token';
-      const mockUser = {
-        id: '1',
-        name: 'Demo User',
-        email: email,
-        role: 'user',
-      };
-      
-      // Save token to localStorage or sessionStorage based on rememberMe
-      if (rememberMe) {
-        localStorage.setItem('authToken', mockToken);
-      } else {
-        sessionStorage.setItem('authToken', mockToken);
+      if (data.message !== "Login successful") {
+        throw new Error(data.message || 'Authentication failed');
       }
       
-      setUser(mockUser);
-      router.push('/');
+      // Convert backend user model to frontend model
+      const userData: User = {
+        ...data.user,
+        id: data.user.User_Id?.toString(),
+        name: data.user.Name,
+        role: 'user', // Default role
+      };
+
+      // Save user data to localStorage if rememberMe is true, otherwise to sessionStorage
+      if (rememberMe) {
+        localStorage.setItem('user', JSON.stringify(userData));
+        console.log('Saved user data to localStorage:', userData);
+      } else {
+        sessionStorage.setItem('user', JSON.stringify(userData));
+        console.log('Saved user data to sessionStorage:', userData);
+      }
+      
+      setUser(userData);
+      console.log('User logged in:', userData);
     } catch (error) {
+      console.error('Login error:', error);
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Register function
-  const register = async (name: string, email: string, password: string) => {
+  // Register function - connect to backend API
+  const register = async (username: string, password: string, email: string, dateOfBirth: Date) => {
     setIsLoading(true);
     try {
-      // TODO: Connect to backend API for registration
-      // const response = await fetch('/api/auth/register', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({ name, email, password }),
-      // });
+      const response = await fetch(`${API_BASE_URL}/login/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username,
+          password,
+          email,
+          date_of_birth: dateOfBirth.toISOString(),
+          SSN: "000000000" // Giá trị mặc định vì backend yêu cầu
+        }),
+      });
       
-      // if (!response.ok) throw new Error('Registration failed');
+      const data = await response.json();
       
-      // For now, just simulate a successful registration
-      console.log('Registered user:', { name, email });
+      if (data.error) {
+        throw new Error(data.error);
+      }
       
-      // Typically redirect to login after registration
-      router.push('/auth/login');
+      // Không cần chuyển hướng ở đây, để RegisterForm xử lý
+      console.log('Registration successful');
     } catch (error) {
+      console.error('Registration error:', error);
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Logout function
-  const logout = () => {
-    localStorage.removeItem('authToken');
-    sessionStorage.removeItem('authToken');
+  // Logout function 
+  const logout = async () => {
+    console.log('Logout function called');
+    localStorage.removeItem('user');
+    sessionStorage.removeItem('user');
     setUser(null);
-    router.push('/auth/login');
+    router.push('/about');
   };
-
   const value = {
     user,
     isLoading,
