@@ -31,23 +31,23 @@ interface Stat {
 }
 
 const teamMembers: TeamMember[] = [
-  { name: "Phu", role: "Lead Designer", description: "Phu crafts intuitive, visually stunning interfaces, ensuring every interaction feels effortless and delightful.", image: "https://via.placeholder.com/120" },
-  { name: "Hieu", role: "Software Engineer", description: "Hieu develops the core software that powers our smart home solutions.", image: "https://via.placeholder.com/120" },
-  { name: "Khoa", role: "Product Manager", description: "Khoa leads the product development, ensuring our solutions meet user needs.", image: "https://via.placeholder.com/120" },
-  { name: "Binh", role: "UX Designer", description: "Binh focuses on creating user-friendly experiences for our smart home dashboard.", image: "https://via.placeholder.com/120" },
-  { name: "Khoi", role: "Hardware Engineer", description: "Khoi designs and integrates the hardware components of our smart home system.", image: "https://via.placeholder.com/120" },
+  { name: "Phu", role: "Lead Designer", description: "Phu crafts intuitive, visually stunning interfaces, ensuring every interaction feels effortless and delightful.", image: "https://avatars.githubusercontent.com/u/123137268?s=400&u=fd7655d243b91e49e442779e3676ca267b561bc4&v=4" },
+  { name: "Hieu", role: "Software Engineer", description: "Hieu develops the core software that powers our smart home solutions.", image: "https://avatars.githubusercontent.com/u/152246636?v=4" },
+  { name: "Khoa", role: "Product Manager", description: "Khoa leads the product development, ensuring our solutions meet user needs.", image: "https://avatars.githubusercontent.com/u/126898951?v=4" },
+  { name: "Binh", role: "UX Designer", description: "Binh focuses on creating user-friendly experiences for our smart home dashboard.", image: "https://avatars.githubusercontent.com/u/152246636?v=4" },
+  { name: "Khoi", role: "Hardware Engineer", description: "Khoi designs and integrates the hardware components of our smart home system.", image: "https://avatars.githubusercontent.com/u/167783879?v=4" },
 ];
 
 const technologies: Technology[] = [
-  { title: "Smart Hub", description: "The central brain connecting all your devices for seamless control and monitoring.", icon: "https://via.placeholder.com/60?text=Hub" },
-  { title: "Advanced Sensors", description: "Real-time tracking of temperature, humidity, and motion to keep your home optimized.", icon: "https://via.placeholder.com/60?text=Sensors" },
-  { title: "AI Integration", description: "Learns your habits and adjusts your home settings automatically for maximum comfort.", icon: "https://via.placeholder.com/60?text=AI" },
+  { title: "Smart Hub", description: "The central brain connecting all your devices for seamless control and monitoring.", icon: "https://cdn-icons-png.flaticon.com/512/1046/1046857.png" },
+  { title: "Advanced Sensors", description: "Real-time tracking of temperature, humidity, and motion to keep your home optimized.", icon: "https://cdn-icons-png.flaticon.com/512/2936/2936884.png" },
+  { title: "AI Integration", description: "Learns your habits and adjusts your home settings automatically for maximum comfort.", icon: "https://cdn-icons-png.flaticon.com/512/4712/4712035.png" },
 ];
 
 const whyChooseUs: Reason[] = [
-  { title: "Effortless Control", description: "Manage your home with an interface anyone can use.", icon: "https://via.placeholder.com/40?text=Simple" },
-  { title: "Cutting-Edge Tech", description: "Stay ahead with AI, real-time alerts, and smart integrations.", icon: "https://via.placeholder.com/40?text=Tech" },
-  { title: "24/7 Support", description: "Our team is here around the clock to assist you.", icon: "https://via.placeholder.com/40?text=Support" },
+  { title: "Effortless Control", description: "Manage your home with an interface anyone can use.", icon: "https://cdn-icons-png.flaticon.com/512/1828/1828919.png" },
+  { title: "Cutting-Edge Tech", description: "Stay ahead with AI, real-time alerts, and smart integrations.", icon: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png" },
+  { title: "24/7 Support", description: "Our team is here around the clock to assist you.", icon: "https://cdn-icons-png.flaticon.com/512/1828/1828970.png" },
 ];
 
 const testimonials: Testimonial[] = [
@@ -123,8 +123,8 @@ const AboutPage: React.FC = () => (
       {/* Hero */}
       <section className="bg-gradient-to-b from-purple-50 to-white p-12 rounded-lg text-center">
         <h1 className="text-4xl font-bold text-purple-600 mb-4">Welcome to Smart Home System</h1>
-        <p className="text-gray-600 max-w-3xl mx-auto">Transform your living space with a smart home solution that’s intuitive, innovative, and designed for you. Control lighting, temperature, security, and more—all from a single, user-friendly dashboard.</p>
-        <img src="https://via.placeholder.com/600x300?text=Smart+Home+Illustration" alt="Smart Home Illustration" className="mt-6 mx-auto rounded-lg" />
+        <p className="text-gray-600 max-w-3xl mx-auto">Transform your living space with a smart home solution that's intuitive, innovative, and designed for you. Control lighting, temperature, security, and more—all from a single, user-friendly dashboard.</p>
+        <img src="/img/smarthome001.png" alt="Smart Home Illustration" className="mt-6 mx-auto rounded-lg" />
       </section>
 
       {/* Team */}
@@ -179,8 +179,8 @@ const AboutPage: React.FC = () => (
     <footer className="bg-purple-600 text-white text-center py-8">
       <p>© 2025 Smart Home System. All rights reserved.</p>
       <p className="mt-2">
-        <Link href="/privacy" className="underline">Privacy Policy</Link> | 
-        <Link href="/terms" className="underline">Terms of Service</Link> | 
+        <Link href="/privacy" className="underline">Privacy Policy</Link> |
+        <Link href="/terms" className="underline">Terms of Service</Link> |
         <Link href="/contact" className="underline">Contact Us</Link>
       </p>
     </footer>
