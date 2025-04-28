@@ -91,10 +91,20 @@ const FireDetection = () => {
                 videoRef.current.srcObject = stream;
                 streamRef.current = stream;
 
-                // Set up canvas for drawing detections
-                const canvas = canvasRef.current;
-                canvas.width = videoRef.current.clientWidth;
-                canvas.height = videoRef.current.clientHeight;
+                // Wait for video to be ready
+                await new Promise((resolve) => {
+                    if (videoRef.current) {
+                        videoRef.current.onloadedmetadata = () => {
+                            // Set canvas size to match video's actual dimensions
+                            const canvas = canvasRef.current;
+                            if (canvas && videoRef.current) {
+                                canvas.width = videoRef.current.videoWidth;
+                                canvas.height = videoRef.current.videoHeight;
+                            }
+                            resolve(null);
+                        };
+                    }
+                });
 
                 // Start detection stream
                 detectionStreamRef.current = new FireDetectionStream(videoRef.current);
@@ -189,11 +199,12 @@ const FireDetection = () => {
                                     ref={videoRef}
                                     autoPlay
                                     playsInline
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-contain"
                                 />
                                 <canvas
                                     ref={canvasRef}
                                     className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                                    style={{ objectFit: 'contain' }}
                                 />
                             </div>
                             <div className="mt-4 flex space-x-4">
