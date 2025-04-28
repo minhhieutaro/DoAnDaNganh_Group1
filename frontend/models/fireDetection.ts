@@ -12,7 +12,7 @@ export const detectFireInImage = async (file: File): Promise<Detection[]> => {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_BASE_URL}/api/fire-detection/detect-fire/image`, {
+    const response = await fetch(`http://129.150.38.89:5000/detect_images`, {
         method: 'POST',
         body: formData,
     });
