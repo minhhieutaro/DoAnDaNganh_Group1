@@ -1,0 +1,8 @@
+{
+  "/sensors/page": "app/sensors/page.js",
+  "/fire-detection/page": "app/fire-detection/page.js",
+  "/home/page": "app/home/page.js",
+  "/logging/page": "app/logging/page.js",
+  "/humidity/page": "app/humidity/page.js",
+  "/device/page": "app/device/page.js"
+}
