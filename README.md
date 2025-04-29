@@ -102,6 +102,9 @@ cd frontend
 # Install npm dependencies
 npm install
 
+# Install websocket io
+npm install socket.io
+
 # Run the development server
 npm run dev
 ```
