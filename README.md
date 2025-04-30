@@ -77,6 +77,26 @@ This report provides a comprehensive overview of the **Yolo:Home** project, deta
 
 ---
 
+## 🔗 Project Resources
+
+### Links to all resources:
+
+- **Yolo:Bit Program:**
+  - https://app.ohstem.vn/#!/share/yolobit/2wJ4QNxINW7ypVpHXpSp6DlXwfS
+
+- **Web Application Repository:**
+  - https://github.com/minhhieutaro/DoAnDaNganh_Group1
+
+- **Training Notebooks on Kaggle:**
+  - YOLOv10: https://www.kaggle.com/code/phunguyenquang/dadn-yolov10
+  - YOLOv11: https://www.kaggle.com/code/zphudzz/dadn-yolov11
+  - YOLOv12: https://www.kaggle.com/code/phunguyenquang/dadn-yolov12
+
+- **Project Demonstration Videos:**
+  - https://drive.google.com/drive/u/3/folders/1Gca9v4jIapleQGKFx32boxOEGag5bx9f
+
+---
+
 ## 🛠️ Setting Up the Environment
 
 ### Backend Setup:
