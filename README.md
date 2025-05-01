@@ -111,6 +111,9 @@ conda activate yolo_home_env
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Run the backend
+fastapi dev
 ```
 
 ### Frontend Setup:
